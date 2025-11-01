@@ -3,6 +3,7 @@ import { Chess, Square, PieceSymbol } from "chess.js";
 import { ChessBoard } from "@/components/ChessBoard";
 import { useMultiplayer } from "@/hooks/useMultiplayer";
 import { MultiplayerDialog } from "@/components/MultiplayerDialog";
+import { TimeControlDialog } from "@/components/TimeControlDialog";
 import { MoveHistory } from "@/components/MoveHistory";
 import { CapturedPieces } from "@/components/CapturedPieces";
 import { GameStatus } from "@/components/GameStatus";
@@ -31,12 +32,33 @@ const Index = () => {
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
   const [pendingMove, setPendingMove] = useState<{ from: Square; to: Square } | null>(null);
+  const [showTimeControlDialog, setShowTimeControlDialog] = useState(false);
+  const [timeIncrement, setTimeIncrement] = useState(0);
+  const [movesPlayed, setMovesPlayed] = useState(0);
+  const [gameResult, setGameResult] = useState("");
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleGameUpdate = useCallback((fen: string) => {
     const newGame = new Chess(fen);
     setGame(newGame);
-  }, []);
+    
+    // Set PGN headers
+    const today = new Date();
+    newGame.header("Event", "Online Chess Game");
+    newGame.header("Site", "Chess App");
+    newGame.header("Date", today.toISOString().split('T')[0]);
+    newGame.header("Round", "1");
+    newGame.header("White", whitePlayerName);
+    newGame.header("Black", blackPlayerName);
+    
+    if (newGame.isGameOver()) {
+      let result = "1/2-1/2";
+      if (newGame.isCheckmate()) {
+        result = newGame.turn() === "w" ? "0-1" : "1-0";
+      }
+      newGame.header("Result", result);
+    }
+  }, [whitePlayerName, blackPlayerName]);
 
   const { playerRole, isConnected, makeMove } = useMultiplayer(
     isMultiplayer ? roomId : null,
@@ -55,7 +77,14 @@ const Index = () => {
         setWhiteTime((prev) => {
           if (prev <= 1) {
             setIsTimerActive(false);
-            toast.error(`${blackPlayerName} wins on time!`);
+            const result = `${blackPlayerName} wins on time!`;
+            setGameResult(result);
+            toast.error(result);
+            
+            // Set PGN result
+            const gameCopy = new Chess(game.fen());
+            gameCopy.header("Result", "0-1");
+            setGame(gameCopy);
             return 0;
           }
           return prev - 1;
@@ -64,7 +93,14 @@ const Index = () => {
         setBlackTime((prev) => {
           if (prev <= 1) {
             setIsTimerActive(false);
-            toast.error(`${whitePlayerName} wins on time!`);
+            const result = `${whitePlayerName} wins on time!`;
+            setGameResult(result);
+            toast.error(result);
+            
+            // Set PGN result
+            const gameCopy = new Chess(game.fen());
+            gameCopy.header("Result", "1-0");
+            setGame(gameCopy);
             return 0;
           }
           return prev - 1;
@@ -111,17 +147,44 @@ const Index = () => {
             }
 
             setMoveHistory((prev) => [...prev, move.san]);
-            setGame(gameCopy);
+            setMovesPlayed(prev => prev + 1);
+            
+            // Add time increment after move
+            if (timeIncrement > 0) {
+              if (move.color === "w") {
+                setWhiteTime(prev => prev + timeIncrement);
+              } else {
+                setBlackTime(prev => prev + timeIncrement);
+              }
+            }
+
+            // Update PGN headers
+            const today = new Date();
+            gameCopy.header("Event", "Chess Game");
+            gameCopy.header("Site", "Chess App");
+            gameCopy.header("Date", today.toISOString().split('T')[0]);
+            gameCopy.header("Round", "1");
+            gameCopy.header("White", whitePlayerName);
+            gameCopy.header("Black", blackPlayerName);
 
             if (gameCopy.isCheckmate()) {
               setIsTimerActive(false);
+              const result = gameCopy.turn() === "w" ? "0-1" : "1-0";
+              gameCopy.header("Result", result);
+              setGameResult(getGameStatus());
             } else if (gameCopy.isCheck()) {
               toast.warning("Check!");
             } else if (gameCopy.isDraw()) {
               setIsTimerActive(false);
+              gameCopy.header("Result", "1/2-1/2");
+              setGameResult("Draw!");
             } else if (gameCopy.isStalemate()) {
               setIsTimerActive(false);
+              gameCopy.header("Result", "1/2-1/2");
+              setGameResult("Stalemate!");
             }
+            
+            setGame(gameCopy);
           }
         } catch (error) {
           console.error("Invalid move:", error);
@@ -140,7 +203,17 @@ const Index = () => {
   };
 
   const handleNewGame = () => {
-    setGame(new Chess());
+    const newGame = new Chess();
+    const today = new Date();
+    newGame.header("Event", "Chess Game");
+    newGame.header("Site", "Chess App");
+    newGame.header("Date", today.toISOString().split('T')[0]);
+    newGame.header("Round", "1");
+    newGame.header("White", whitePlayerName);
+    newGame.header("Black", blackPlayerName);
+    newGame.header("Result", "*");
+    
+    setGame(newGame);
     setMoveHistory([]);
     setCapturedPieces([]);
     setWhiteTime(600);
@@ -148,6 +221,8 @@ const Index = () => {
     setIsTimerActive(false);
     setIsMultiplayer(false);
     setRoomId(null);
+    setMovesPlayed(0);
+    setGameResult("");
     if (timerRef.current) clearInterval(timerRef.current);
     toast.success("New game started!");
   };
@@ -162,7 +237,6 @@ const Index = () => {
     const chess960Positions = [
       "QNNRKR", "NQNRKR", "NNQRKR", "NNRQKR", "NNRKQR", "NNRKRQ",
       "QNRNKR", "NQRNKR", "NRQNKR", "NRNQKR", "NRNKQR", "NRNKRQ",
-      // Add more valid Chess960 positions
       "QNRKNR", "NQRKNR", "NRQKNR", "NRKQNR", "NRKNQR", "NRKNRQ",
       "QNRKRN", "NQRKRN", "NRQKRN", "NRKQRN", "NRKRQN", "NRKRNQ"
     ];
@@ -176,12 +250,22 @@ const Index = () => {
     const newGame = new Chess();
     try {
       newGame.load(fen);
+      const today = new Date();
+      newGame.header("Event", "Chess960 Game");
+      newGame.header("Site", "Chess App");
+      newGame.header("Date", today.toISOString().split('T')[0]);
+      newGame.header("Round", "1");
+      newGame.header("White", whitePlayerName);
+      newGame.header("Black", blackPlayerName);
+      newGame.header("Result", "*");
+      
       setGame(newGame);
       setMoveHistory([]);
       setCapturedPieces([]);
       setWhiteTime(600);
       setBlackTime(600);
       setIsTimerActive(false);
+      setMovesPlayed(0);
       if (timerRef.current) clearInterval(timerRef.current);
       toast.success("Chess960 position set!");
     } catch (error) {
@@ -195,9 +279,50 @@ const Index = () => {
     toast.success("Player names updated!");
   };
 
+  const handleTimeControl = (minutes: number, increment: number) => {
+    const seconds = minutes * 60;
+    setWhiteTime(seconds);
+    setBlackTime(seconds);
+    setTimeIncrement(increment);
+    toast.success(`Time control set: ${minutes} min + ${increment} sec`);
+  };
+
+  const handleResignWhite = () => {
+    setIsTimerActive(false);
+    const result = `${blackPlayerName} wins by resignation!`;
+    setGameResult(result);
+    const gameCopy = new Chess(game.fen());
+    gameCopy.header("Result", "0-1");
+    setGame(gameCopy);
+    toast.error(result);
+  };
+
+  const handleResignBlack = () => {
+    setIsTimerActive(false);
+    const result = `${whitePlayerName} wins by resignation!`;
+    setGameResult(result);
+    const gameCopy = new Chess(game.fen());
+    gameCopy.header("Result", "1-0");
+    setGame(gameCopy);
+    toast.error(result);
+  };
+
+  const handleResign = () => {
+    if (!playerRole) return;
+    setIsTimerActive(false);
+    const winner = playerRole === 'w' ? blackPlayerName : whitePlayerName;
+    const result = `${winner} wins by resignation!`;
+    setGameResult(result);
+    const gameCopy = new Chess(game.fen());
+    gameCopy.header("Result", playerRole === 'w' ? "0-1" : "1-0");
+    setGame(gameCopy);
+    toast.error(result);
+  };
+
   const getGameStatus = () => {
+    if (gameResult) return gameResult;
     if (game.isCheckmate()) {
-      return `Checkmate! ${game.turn() === "w" ? "Black" : "White"} wins!`;
+      return `Checkmate! ${game.turn() === "w" ? blackPlayerName : whitePlayerName} wins!`;
     }
     if (game.isDraw()) return "Draw!";
     if (game.isStalemate()) return "Stalemate!";
@@ -269,13 +394,20 @@ const Index = () => {
               status={getGameStatus()}
               turn={game.turn()}
               isCheck={game.isCheck()}
-              isGameOver={game.isGameOver()}
+              isGameOver={game.isGameOver() || whiteTime === 0 || blackTime === 0 || gameResult !== ""}
               onNewGame={handleNewGame}
               onChess960={handleChess960}
               whitePlayerName={whitePlayerName}
               blackPlayerName={blackPlayerName}
               whiteTime={whiteTime}
               blackTime={blackTime}
+              onSetTime={() => setShowTimeControlDialog(true)}
+              showSetTime={movesPlayed < 2}
+              isMultiplayer={isMultiplayer}
+              playerRole={playerRole}
+              onResignWhite={handleResignWhite}
+              onResignBlack={handleResignBlack}
+              onResign={handleResign}
             />
             <CapturedPieces captured={capturedPieces} />
             <MoveHistory moves={moveHistory} game={game} />
@@ -295,10 +427,19 @@ const Index = () => {
         onJoin={handleJoinMultiplayer}
       />
 
+      <TimeControlDialog
+        open={showTimeControlDialog}
+        onClose={() => setShowTimeControlDialog(false)}
+        onSet={handleTimeControl}
+      />
+
       <GameEndOverlay
-        visible={game.isGameOver() || whiteTime === 0 || blackTime === 0}
+        visible={game.isGameOver() || whiteTime === 0 || blackTime === 0 || gameResult !== ""}
         status={whiteTime === 0 ? `${blackPlayerName} wins on time!` : blackTime === 0 ? `${whitePlayerName} wins on time!` : getGameStatus()}
         onNewGame={handleNewGame}
+        game={game}
+        whitePlayerName={whitePlayerName}
+        blackPlayerName={blackPlayerName}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Chess, Square, PieceSymbol } from "chess.js";
 import { ChessBoard } from "@/components/ChessBoard";
+import { useMultiplayer } from "@/hooks/useMultiplayer";
 import { MoveHistory } from "@/components/MoveHistory";
 import { CapturedPieces } from "@/components/CapturedPieces";
 import { GameStatus } from "@/components/GameStatus";
@@ -16,6 +17,8 @@ const Index = () => {
   const { theme, setTheme } = useTheme();
   const [game, setGame] = useState(new Chess());
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [capturedPieces, setCapturedPieces] = useState<
     { piece: PieceSymbol; color: "w" | "b" }[]
   >([]);
@@ -27,6 +30,16 @@ const Index = () => {
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
   const [pendingMove, setPendingMove] = useState<{ from: Square; to: Square } | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleGameUpdate = useCallback((fen: string) => {
+    const newGame = new Chess(fen);
+    setGame(newGame);
+  }, []);
+
+  const { playerRole, isConnected, makeMove } = useMultiplayer(
+    isMultiplayer ? roomId : null,
+    handleGameUpdate
+  );
 
   // Timer effect
   useEffect(() => {
@@ -77,37 +90,43 @@ const Index = () => {
         return;
       }
       
-      try {
-        const move = gameCopy.move({ from, to, promotion: promotion || "q" });
-        
-        if (move) {
-          if (!isTimerActive) setIsTimerActive(true);
+      if (isMultiplayer) {
+        // Send move to server for validation
+        makeMove({ from, to, promotion: promotion || "q" });
+      } else {
+        // Local game
+        try {
+          const move = gameCopy.move({ from, to, promotion: promotion || "q" });
+          
+          if (move) {
+            if (!isTimerActive) setIsTimerActive(true);
 
-          if (move.captured) {
-            setCapturedPieces((prev) => [
-              ...prev,
-              { piece: move.captured as PieceSymbol, color: move.color === "w" ? "b" : "w" },
-            ]);
+            if (move.captured) {
+              setCapturedPieces((prev) => [
+                ...prev,
+                { piece: move.captured as PieceSymbol, color: move.color === "w" ? "b" : "w" },
+              ]);
+            }
+
+            setMoveHistory((prev) => [...prev, move.san]);
+            setGame(gameCopy);
+
+            if (gameCopy.isCheckmate()) {
+              setIsTimerActive(false);
+            } else if (gameCopy.isCheck()) {
+              toast.warning("Check!");
+            } else if (gameCopy.isDraw()) {
+              setIsTimerActive(false);
+            } else if (gameCopy.isStalemate()) {
+              setIsTimerActive(false);
+            }
           }
-
-          setMoveHistory((prev) => [...prev, move.san]);
-          setGame(gameCopy);
-
-          if (gameCopy.isCheckmate()) {
-            setIsTimerActive(false);
-          } else if (gameCopy.isCheck()) {
-            toast.warning("Check!");
-          } else if (gameCopy.isDraw()) {
-            setIsTimerActive(false);
-          } else if (gameCopy.isStalemate()) {
-            setIsTimerActive(false);
-          }
+        } catch (error) {
+          console.error("Invalid move:", error);
         }
-      } catch (error) {
-        console.error("Invalid move:", error);
       }
     },
-    [game, isTimerActive]
+    [game, isTimerActive, isMultiplayer, makeMove]
   );
 
   const handlePromotionSelect = (piece: PieceSymbol) => {
@@ -125,8 +144,18 @@ const Index = () => {
     setWhiteTime(600);
     setBlackTime(600);
     setIsTimerActive(false);
+    setIsMultiplayer(false);
+    setRoomId(null);
     if (timerRef.current) clearInterval(timerRef.current);
     toast.success("New game started!");
+  };
+
+  const handleJoinMultiplayer = () => {
+    const newRoomId = prompt("Enter room ID (or leave blank to create new room):");
+    const room = newRoomId || `room-${Date.now()}`;
+    setRoomId(room);
+    setIsMultiplayer(true);
+    toast.success(`Joining room: ${room}`);
   };
 
   const handleChess960 = () => {
@@ -209,10 +238,33 @@ const Index = () => {
       <main className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 items-start justify-items-center lg:justify-items-start">
           <div className="flex justify-center">
-            <ChessBoard game={game} onMove={handleMove} />
+            <ChessBoard game={game} onMove={handleMove} playerRole={playerRole} />
           </div>
 
           <div className="w-full max-w-sm space-y-4">
+            {isMultiplayer && (
+              <div className="p-4 bg-card rounded-lg border">
+                <p className="text-sm">
+                  <strong>Room:</strong> {roomId}
+                </p>
+                <p className="text-sm">
+                  <strong>Role:</strong> {playerRole === 'w' ? 'White' : playerRole === 'b' ? 'Black' : 'Spectator'}
+                </p>
+                <p className="text-sm">
+                  <strong>Status:</strong> {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+                </p>
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <Button onClick={handleNewGame} className="flex-1">
+                New Local Game
+              </Button>
+              <Button onClick={handleJoinMultiplayer} variant="secondary" className="flex-1">
+                Multiplayer
+              </Button>
+            </div>
+            
             <GameStatus
               status={getGameStatus()}
               turn={game.turn()}

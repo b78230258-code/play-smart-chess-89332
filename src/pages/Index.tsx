@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Chess, Square, PieceSymbol } from "chess.js";
 import { ChessBoard } from "@/components/ChessBoard";
 import { useMultiplayer } from "@/hooks/useMultiplayer";
+import { MultiplayerDialog } from "@/components/MultiplayerDialog";
 import { MoveHistory } from "@/components/MoveHistory";
 import { CapturedPieces } from "@/components/CapturedPieces";
 import { GameStatus } from "@/components/GameStatus";
@@ -19,6 +20,7 @@ const Index = () => {
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isMultiplayer, setIsMultiplayer] = useState(false);
+  const [showMultiplayerDialog, setShowMultiplayerDialog] = useState(false);
   const [capturedPieces, setCapturedPieces] = useState<
     { piece: PieceSymbol; color: "w" | "b" }[]
   >([]);
@@ -150,9 +152,7 @@ const Index = () => {
     toast.success("New game started!");
   };
 
-  const handleJoinMultiplayer = () => {
-    const newRoomId = prompt("Enter room ID (or leave blank to create new room):");
-    const room = newRoomId || `room-${Date.now()}`;
+  const handleJoinMultiplayer = (room: string) => {
     setRoomId(room);
     setIsMultiplayer(true);
     toast.success(`Joining room: ${room}`);
@@ -260,7 +260,7 @@ const Index = () => {
               <Button onClick={handleNewGame} className="flex-1">
                 New Local Game
               </Button>
-              <Button onClick={handleJoinMultiplayer} variant="secondary" className="flex-1">
+              <Button onClick={() => setShowMultiplayerDialog(true)} variant="secondary" className="flex-1">
                 Multiplayer
               </Button>
             </div>
@@ -287,6 +287,12 @@ const Index = () => {
         open={showPromotionDialog}
         onSelect={handlePromotionSelect}
         color={game.turn() === "w" ? "b" : "w"}
+      />
+
+      <MultiplayerDialog
+        open={showMultiplayerDialog}
+        onClose={() => setShowMultiplayerDialog(false)}
+        onJoin={handleJoinMultiplayer}
       />
 
       <GameEndOverlay

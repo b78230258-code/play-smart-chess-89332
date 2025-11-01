@@ -36,6 +36,10 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
     (square: Square) => {
       if (!canInteract) return;
       
+      // Clear arrows on any left click
+      setArrows([]);
+      setDrawingArrow(null);
+      
       if (selectedSquare) {
         if (legalMoves.includes(square)) {
           onMove(selectedSquare, square);
@@ -88,7 +92,9 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
   const handleRightClick = useCallback((e: React.MouseEvent, square: Square) => {
     e.preventDefault();
     if (drawingArrow) {
-      setArrows((prev) => [...prev, { from: drawingArrow, to: square }]);
+      if (drawingArrow !== square) {
+        setArrows((prev) => [...prev, { from: drawingArrow, to: square }]);
+      }
       setDrawingArrow(null);
     } else {
       setDrawingArrow(square);
@@ -119,7 +125,7 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
   const getSquareCenter = (square: Square) => {
     const fileIdx = files.indexOf(square[0]);
     const rankIdx = ranks.indexOf(square[1]);
-    const squareSize = 96; // md:w-24 = 96px
+    const squareSize = window.innerWidth < 640 ? 64 : window.innerWidth < 768 ? 80 : 96;
     return {
       x: fileIdx * squareSize + squareSize / 2,
       y: rankIdx * squareSize + squareSize / 2,

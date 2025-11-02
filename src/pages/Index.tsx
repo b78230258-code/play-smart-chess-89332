@@ -39,7 +39,22 @@ const Index = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleGameUpdate = useCallback((fen: string) => {
-    const newGame = new Chess(fen);
+    // Preserve move history in multiplayer by using the existing game's PGN
+    const newGame = new Chess();
+    if (game.history().length > 0) {
+      try {
+        newGame.loadPgn(game.pgn());
+        // Apply the new position if it's different
+        if (newGame.fen() !== fen) {
+          newGame.load(fen);
+        }
+      } catch {
+        newGame.load(fen);
+      }
+    } else {
+      newGame.load(fen);
+    }
+    
     setGame(newGame);
     
     // Set PGN headers
@@ -58,7 +73,7 @@ const Index = () => {
       }
       newGame.header("Result", result);
     }
-  }, [whitePlayerName, blackPlayerName]);
+  }, [game, whitePlayerName, blackPlayerName]);
 
   const { playerRole, isConnected, makeMove } = useMultiplayer(
     isMultiplayer ? roomId : null,
@@ -82,9 +97,8 @@ const Index = () => {
             toast.error(result);
             
             // Set PGN result
-            const gameCopy = new Chess(game.fen());
-            gameCopy.header("Result", "0-1");
-            setGame(gameCopy);
+            game.header("Result", "0-1");
+            setGame(game);
             return 0;
           }
           return prev - 1;
@@ -98,9 +112,8 @@ const Index = () => {
             toast.error(result);
             
             // Set PGN result
-            const gameCopy = new Chess(game.fen());
-            gameCopy.header("Result", "1-0");
-            setGame(gameCopy);
+            game.header("Result", "1-0");
+            setGame(game);
             return 0;
           }
           return prev - 1;
@@ -115,7 +128,13 @@ const Index = () => {
 
   const handleMove = useCallback(
     (from: Square, to: Square, promotion?: PieceSymbol) => {
-      const gameCopy = new Chess(game.fen());
+      // Preserve move history by loading from PGN
+      const gameCopy = new Chess();
+      if (game.history().length > 0) {
+        gameCopy.loadPgn(game.pgn());
+      } else {
+        gameCopy.load(game.fen());
+      }
       
       // Check if this is a pawn promotion move
       const piece = gameCopy.get(from);
@@ -244,8 +263,9 @@ const Index = () => {
     const randomPos = chess960Positions[Math.floor(Math.random() * chess960Positions.length)];
     const backRank = randomPos.toLowerCase().split("");
     
+    // Chess960 uses no castling rights in standard FEN notation
     let fen = backRank.join("") + "/pppppppp/8/8/8/8/PPPPPPPP/" + 
-              backRank.join("").toUpperCase() + " w KQkq - 0 1";
+              backRank.join("").toUpperCase() + " w - - 0 1";
     
     const newGame = new Chess();
     try {
@@ -291,9 +311,8 @@ const Index = () => {
     setIsTimerActive(false);
     const result = `${blackPlayerName} wins by resignation!`;
     setGameResult(result);
-    const gameCopy = new Chess(game.fen());
-    gameCopy.header("Result", "0-1");
-    setGame(gameCopy);
+    game.header("Result", "0-1");
+    setGame(game);
     toast.error(result);
   };
 
@@ -301,9 +320,8 @@ const Index = () => {
     setIsTimerActive(false);
     const result = `${whitePlayerName} wins by resignation!`;
     setGameResult(result);
-    const gameCopy = new Chess(game.fen());
-    gameCopy.header("Result", "1-0");
-    setGame(gameCopy);
+    game.header("Result", "1-0");
+    setGame(game);
     toast.error(result);
   };
 
@@ -313,9 +331,8 @@ const Index = () => {
     const winner = playerRole === 'w' ? blackPlayerName : whitePlayerName;
     const result = `${winner} wins by resignation!`;
     setGameResult(result);
-    const gameCopy = new Chess(game.fen());
-    gameCopy.header("Result", playerRole === 'w' ? "0-1" : "1-0");
-    setGame(gameCopy);
+    game.header("Result", playerRole === 'w' ? "0-1" : "1-0");
+    setGame(game);
     toast.error(result);
   };
 

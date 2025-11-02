@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
+import { chessSounds } from "@/utils/sounds";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
@@ -95,6 +96,7 @@ const Index = () => {
             const result = `${blackPlayerName} wins on time!`;
             setGameResult(result);
             toast.error(result);
+            chessSounds.playGameEnd(true);
             
             // Set PGN result
             game.header("Result", "0-1");
@@ -110,6 +112,7 @@ const Index = () => {
             const result = `${whitePlayerName} wins on time!`;
             setGameResult(result);
             toast.error(result);
+            chessSounds.playGameEnd(true);
             
             // Set PGN result
             game.header("Result", "1-0");
@@ -163,6 +166,9 @@ const Index = () => {
                 ...prev,
                 { piece: move.captured as PieceSymbol, color: move.color === "w" ? "b" : "w" },
               ]);
+              chessSounds.playCapture();
+            } else {
+              chessSounds.playMove();
             }
 
             setMoveHistory((prev) => [...prev, move.san]);
@@ -191,16 +197,20 @@ const Index = () => {
               const result = gameCopy.turn() === "w" ? "0-1" : "1-0";
               gameCopy.header("Result", result);
               setGameResult(getGameStatus());
+              chessSounds.playGameEnd(true);
             } else if (gameCopy.isCheck()) {
               toast.warning("Check!");
+              chessSounds.playCheck();
             } else if (gameCopy.isDraw()) {
               setIsTimerActive(false);
               gameCopy.header("Result", "1/2-1/2");
               setGameResult("Draw!");
+              chessSounds.playGameEnd(false);
             } else if (gameCopy.isStalemate()) {
               setIsTimerActive(false);
               gameCopy.header("Result", "1/2-1/2");
               setGameResult("Stalemate!");
+              chessSounds.playGameEnd(false);
             }
             
             setGame(gameCopy);
@@ -357,6 +367,7 @@ const Index = () => {
     game.header("Result", "0-1");
     setGame(game);
     toast.error(result);
+    chessSounds.playGameEnd(true);
   };
 
   const handleResignBlack = () => {
@@ -366,6 +377,7 @@ const Index = () => {
     game.header("Result", "1-0");
     setGame(game);
     toast.error(result);
+    chessSounds.playGameEnd(true);
   };
 
   const handleResign = () => {
@@ -377,6 +389,17 @@ const Index = () => {
     game.header("Result", playerRole === 'w' ? "0-1" : "1-0");
     setGame(game);
     toast.error(result);
+    chessSounds.playGameEnd(true);
+  };
+
+  const handleOfferDraw = () => {
+    setIsTimerActive(false);
+    const result = "Game drawn by agreement";
+    setGameResult(result);
+    game.header("Result", "1/2-1/2");
+    setGame(game);
+    toast.success(result);
+    chessSounds.playGameEnd(false);
   };
 
   const getGameStatus = () => {
@@ -468,6 +491,7 @@ const Index = () => {
               onResignWhite={handleResignWhite}
               onResignBlack={handleResignBlack}
               onResign={handleResign}
+              onOfferDraw={handleOfferDraw}
             />
             <CapturedPieces captured={capturedPieces} />
             <MoveHistory moves={moveHistory} game={game} />

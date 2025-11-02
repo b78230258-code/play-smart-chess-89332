@@ -253,44 +253,75 @@ const Index = () => {
   };
 
   const handleChess960 = () => {
-    const chess960Positions = [
-      "QNNRKR", "NQNRKR", "NNQRKR", "NNRQKR", "NNRKQR", "NNRKRQ",
-      "QNRNKR", "NQRNKR", "NRQNKR", "NRNQKR", "NRNKQR", "NRNKRQ",
-      "QNRKNR", "NQRKNR", "NRQKNR", "NRKQNR", "NRKNQR", "NRKNRQ",
-      "QNRKRN", "NQRKRN", "NRQKRN", "NRKQRN", "NRKRQN", "NRKRNQ"
-    ];
-    
-    const randomPos = chess960Positions[Math.floor(Math.random() * chess960Positions.length)];
-    const backRank = randomPos.toLowerCase().split("");
-    
-    // Chess960 uses no castling rights in standard FEN notation
-    let fen = backRank.join("") + "/pppppppp/8/8/8/8/PPPPPPPP/" + 
-              backRank.join("").toUpperCase() + " w - - 0 1";
-    
-    const newGame = new Chess();
+    // Generate a valid Chess960 back rank (white side)
+    const generateChess960BackRank = () => {
+      const board = Array(8).fill('');
+      const even = [0, 2, 4, 6];
+      const odd = [1, 3, 5, 7];
+
+      const pick = (arr: number[]) => arr.splice(Math.floor(Math.random() * arr.length), 1)[0];
+
+      // Bishops on opposite colors
+      const evenCopy = [...even];
+      const oddCopy = [...odd];
+      const b1 = pick(evenCopy);
+      const b2 = pick(oddCopy);
+      board[b1] = 'B';
+      board[b2] = 'B';
+
+      // Remaining indices
+      const remaining = Array.from({ length: 8 }, (_, i) => i).filter((i) => ![b1, b2].includes(i));
+
+      // Queen
+      const qIndex = pick(remaining);
+      board[qIndex] = 'Q';
+
+      // Knights (2)
+      const n1 = pick(remaining);
+      const n2 = pick(remaining);
+      board[n1] = 'N';
+      board[n2] = 'N';
+
+      // Remaining 3 squares: place R K R with king between rooks
+      remaining.sort((a, b) => a - b);
+      board[remaining[0]] = 'R';
+      board[remaining[1]] = 'K';
+      board[remaining[2]] = 'R';
+
+      return board.join(''); // Uppercase for white rank
+    };
+
+    const whiteRank = generateChess960BackRank();
+    const blackRank = whiteRank.toLowerCase();
+
+    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w - - 0 1`;
+
+    let newGame: Chess;
     try {
-      newGame.load(fen);
-      const today = new Date();
-      newGame.header("Event", "Chess960 Game");
-      newGame.header("Site", "Chess App");
-      newGame.header("Date", today.toISOString().split('T')[0]);
-      newGame.header("Round", "1");
-      newGame.header("White", whitePlayerName);
-      newGame.header("Black", blackPlayerName);
-      newGame.header("Result", "*");
-      
-      setGame(newGame);
-      setMoveHistory([]);
-      setCapturedPieces([]);
-      setWhiteTime(600);
-      setBlackTime(600);
-      setIsTimerActive(false);
-      setMovesPlayed(0);
-      if (timerRef.current) clearInterval(timerRef.current);
-      toast.success("Chess960 position set!");
-    } catch (error) {
+      newGame = new Chess(fen);
+    } catch {
       toast.error("Failed to set Chess960 position");
+      return;
     }
+
+    const today = new Date();
+    newGame.header("Event", "Chess960 Game");
+    newGame.header("Site", "Chess App");
+    newGame.header("Date", today.toISOString().split('T')[0]);
+    newGame.header("Round", "1");
+    newGame.header("White", whitePlayerName);
+    newGame.header("Black", blackPlayerName);
+    newGame.header("Result", "*");
+
+    setGame(newGame);
+    setMoveHistory([]);
+    setCapturedPieces([]);
+    setWhiteTime(600);
+    setBlackTime(600);
+    setIsTimerActive(false);
+    setMovesPlayed(0);
+    if (timerRef.current) clearInterval(timerRef.current);
+    toast.success("Chess960 position set!");
   };
 
   const handlePlayerNamesSave = (whiteName: string, blackName: string) => {

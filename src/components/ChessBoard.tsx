@@ -34,23 +34,6 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
 
   const canInteract = !playerRole || playerRole === 'spectator' || game.turn() === playerRole;
 
-  // Find the checked king's position
-  const getCheckedKingSquare = (): Square | null => {
-    if (!game.isCheck()) return null;
-    const turn = game.turn();
-    for (let rankIdx = 0; rankIdx < 8; rankIdx++) {
-      for (let fileIdx = 0; fileIdx < 8; fileIdx++) {
-        const piece = board[rankIdx][fileIdx];
-        if (piece && piece.type === 'k' && piece.color === turn) {
-          return getSquareName(rankIdx, fileIdx);
-        }
-      }
-    }
-    return null;
-  };
-
-  const checkedKingSquare = getCheckedKingSquare();
-
   const handleSquareClick = useCallback(
     (square: Square) => {
       if (!canInteract) return;
@@ -205,7 +188,6 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
             const isSelected = selectedSquare === square;
             const isLegalMove = legalMoves.includes(square);
             const piece = getPiece(rankIdx, fileIdx);
-            const isCheckedKing = checkedKingSquare === square;
 
             return (
               <button
@@ -224,8 +206,7 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
                     : "bg-[hsl(var(--chess-dark))]",
                   isSelected && "ring-4 ring-[hsl(var(--chess-selected))] ring-inset",
                   isLegalMove && "after:absolute after:w-4 after:h-4 after:bg-[hsl(var(--chess-highlight))] after:rounded-full after:opacity-70 after:transition-all after:duration-200",
-                  draggedPiece?.square === square && "opacity-50",
-                  isCheckedKing && "animate-pulse ring-4 ring-red-500 ring-inset shadow-[0_0_20px_rgba(239,68,68,0.8)]"
+                  draggedPiece?.square === square && "opacity-50"
                 )}
               >
                 {piece && (

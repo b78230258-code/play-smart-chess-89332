@@ -288,13 +288,25 @@ const Index = () => {
       board[remaining[1]] = 'K';
       board[remaining[2]] = 'R';
 
-      return board.join(''); // Uppercase for white rank
+      return { board: board.join(''), kingPos: remaining[1], rookPos: [remaining[0], remaining[2]] };
     };
 
-    const whiteRank = generateChess960BackRank();
+    const white = generateChess960BackRank();
+    const whiteRank = white.board;
     const blackRank = whiteRank.toLowerCase();
 
-    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w - - 0 1`;
+    // Find king and rook positions for castling rights
+    // In Chess960, we use the file letters where rooks are placed
+    const files = 'abcdefgh';
+    const whiteKingFile = files[white.kingPos];
+    const whiteQueensideRookFile = files[white.rookPos[0]];
+    const whiteKingsideRookFile = files[white.rookPos[1]];
+    
+    // Standard castling notation: KQkq (kingside and queenside for both colors)
+    // For Chess960, we'll use KQ for white if king is between rooks
+    const castlingRights = 'KQkq';
+
+    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w ${castlingRights} - 0 1`;
 
     let newGame: Chess;
     try {

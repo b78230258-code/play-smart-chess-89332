@@ -24,6 +24,8 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
   const [draggedPiece, setDraggedPiece] = useState<{ square: Square; piece: string } | null>(null);
   const [arrows, setArrows] = useState<Arrow[]>([]);
   const [drawingArrow, setDrawingArrow] = useState<Square | null>(null);
+  const [rightMouseDown, setRightMouseDown] = useState(false);
+  const [arrowStartSquare, setArrowStartSquare] = useState<Square | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
 
   const board = game.board();
@@ -89,27 +91,71 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
     [draggedPiece, legalMoves, onMove]
   );
 
-  const handleRightClick = useCallback((e: React.MouseEvent, square: Square) => {
-    e.preventDefault();
-    if (drawingArrow) {
-      if (drawingArrow !== square) {
-        setArrows((prev) => [...prev, { from: drawingArrow, to: square }]);
-      }
-      setDrawingArrow(null);
-    } else {
+  const handleRightMouseDown = useCallback((e: React.MouseEvent, square: Square) => {
+    if (e.button === 2) { // Right mouse button
+      e.preventDefault();
+      setRightMouseDown(true);
+      setArrowStartSquare(square);
+    }
+  }, []);
+
+  const handleRightMouseEnter = useCallback((square: Square) => {
+    if (rightMouseDown && arrowStartSquare && arrowStartSquare !== square) {
+      // Update drawing arrow preview
       setDrawingArrow(square);
     }
-  }, [drawingArrow]);
+  }, [rightMouseDown, arrowStartSquare]);
+
+  const handleRightMouseUp = useCallback((e: React.MouseEvent, square: Square) => {
+    if (e.button === 2 && rightMouseDown && arrowStartSquare) {
+      e.preventDefault();
+      if (arrowStartSquare !== square) {
+        // Check if arrow already exists
+        const arrowExists = arrows.some(
+          a => a.from === arrowStartSquare && a.to === square
+        );
+        if (arrowExists) {
+          // Remove the arrow if it already exists
+          setArrows(prev => prev.filter(
+            a => !(a.from === arrowStartSquare && a.to === square)
+          ));
+        } else {
+          // Add new arrow
+          setArrows(prev => [...prev, { from: arrowStartSquare, to: square }]);
+        }
+      }
+      setRightMouseDown(false);
+      setArrowStartSquare(null);
+      setDrawingArrow(null);
+    }
+  }, [rightMouseDown, arrowStartSquare, arrows]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setArrows([]);
         setDrawingArrow(null);
+        setArrowStartSquare(null);
+        setRightMouseDown(false);
       }
     };
+    
+    const handleMouseUp = () => {
+      setRightMouseDown(false);
+      setArrowStartSquare(null);
+      setDrawingArrow(null);
+    };
+    
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
   }, []);
 
   const getPiece = (rank: number, file: number) => {
@@ -147,7 +193,10 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
               <button
                 key={square}
                 onClick={() => handleSquareClick(square)}
-                onContextMenu={(e) => handleRightClick(e, square)}
+                onMouseDown={(e) => handleRightMouseDown(e, square)}
+                onMouseEnter={() => handleRightMouseEnter(square)}
+                onMouseUp={(e) => handleRightMouseUp(e, square)}
+                onContextMenu={handleContextMenu}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => handleDragEnd(square)}
                 className={cn(
@@ -220,6 +269,32 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
             </g>
           );
         })}
+        {/* Preview arrow while dragging */}
+        {rightMouseDown && arrowStartSquare && drawingArrow && (
+          <g>
+            <defs>
+              <marker
+                id="arrowhead-preview"
+                markerWidth="10"
+                markerHeight="10"
+                refX="8"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3, 0 6" fill="rgba(100, 200, 255, 0.7)" />
+              </marker>
+            </defs>
+            <line
+              x1={getSquareCenter(arrowStartSquare).x}
+              y1={getSquareCenter(arrowStartSquare).y}
+              x2={getSquareCenter(drawingArrow).x}
+              y2={getSquareCenter(drawingArrow).y}
+              stroke="rgba(100, 200, 255, 0.7)"
+              strokeWidth="4"
+              markerEnd="url(#arrowhead-preview)"
+            />
+          </g>
+        )}
       </svg>
     </div>
   );

@@ -264,7 +264,6 @@ const Index = () => {
 
   const handleChess960 = () => {
     // Generate a valid Chess960 back rank (white side)
-    const pieces = ['B', 'B', 'Q', 'N', 'N', 'R', 'K', 'R'];
     const backRank = Array(8).fill('');
     const even = [0, 2, 4, 6];
     const odd = [1, 3, 5, 7];
@@ -294,15 +293,26 @@ const Index = () => {
 
     // Remaining 3 squares: place R K R with king between rooks
     remaining.sort((a, b) => a - b);
-    backRank[remaining[0]] = 'R';
-    backRank[remaining[1]] = 'K';
-    backRank[remaining[2]] = 'R';
+    const leftRookPos = remaining[0];
+    const kingPos = remaining[1];
+    const rightRookPos = remaining[2];
+    
+    backRank[leftRookPos] = 'R';
+    backRank[kingPos] = 'K';
+    backRank[rightRookPos] = 'R';
 
     const whiteRank = backRank.join('');
     const blackRank = whiteRank.toLowerCase();
 
-    // Chess960 FEN with castling rights
-    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w HAha - 0 1`;
+    // Chess960 FEN with proper castling notation (using file letters)
+    const files = 'abcdefgh';
+    const whiteKingSide = files[rightRookPos].toUpperCase();
+    const whiteQueenSide = files[leftRookPos].toUpperCase();
+    const blackKingSide = files[rightRookPos].toLowerCase();
+    const blackQueenSide = files[leftRookPos].toLowerCase();
+    
+    const castlingRights = `${whiteKingSide}${whiteQueenSide}${blackKingSide}${blackQueenSide}`;
+    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w ${castlingRights} - 0 1`;
 
     let newGame: Chess;
     try {
@@ -403,89 +413,91 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <header className="max-w-7xl mx-auto mb-8">
-        <div className="flex items-center justify-center gap-4 mb-2">
-          <h1 className="text-4xl md:text-5xl font-bold text-center">
-            Chess
-          </h1>
-          <PlayerSettings
-            whitePlayerName={whitePlayerName}
-            blackPlayerName={blackPlayerName}
-            onSave={handlePlayerNamesSave}
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
-        <p className="text-center text-muted-foreground">
-          Play a game of chess
-        </p>
-      </header>
-
-      <main className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 items-start justify-items-center lg:justify-items-start">
-          <div className="flex justify-center">
-            <ChessBoard game={game} onMove={handleMove} playerRole={playerRole} />
-          </div>
-
-          <div className="w-full max-w-sm space-y-4">
-            {isMultiplayer && (
-              <div className="p-4 bg-card rounded-lg border">
-                <p className="text-sm">
-                  <strong>Room:</strong> {roomId}
-                </p>
-                <p className="text-sm">
-                  <strong>Role:</strong> {playerRole === 'w' ? 'White' : playerRole === 'b' ? 'Black' : 'Spectator'}
-                </p>
-                <p className="text-sm">
-                  <strong>Status:</strong> {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
-                </p>
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <Button onClick={handleNewGame} className="flex-1">
-                New Local Game
-              </Button>
-              <Button onClick={() => setShowMultiplayerDialog(true)} variant="secondary" className="flex-1">
-                Multiplayer
-              </Button>
-            </div>
-            
-            <GameStatus
-              status={getGameStatus()}
-              turn={game.turn()}
-              isCheck={game.isCheck()}
-              isGameOver={game.isGameOver() || whiteTime === 0 || blackTime === 0 || gameResult !== ""}
-              onNewGame={handleNewGame}
-              onChess960={handleChess960}
+    <div className="min-h-screen bg-background">
+      <div className="bg-[hsl(var(--menu-bar))] border-b border-border shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
+          <div className="flex items-center justify-center gap-4">
+            <h1 className="text-3xl md:text-4xl font-bold text-[hsl(var(--menu-bar-foreground))]">
+              Chess
+            </h1>
+            <PlayerSettings
               whitePlayerName={whitePlayerName}
               blackPlayerName={blackPlayerName}
-              whiteTime={whiteTime}
-              blackTime={blackTime}
-              onSetTime={() => setShowTimeControlDialog(true)}
-              showSetTime={movesPlayed < 2}
-              isMultiplayer={isMultiplayer}
-              playerRole={playerRole}
-              onResignWhite={handleResignWhite}
-              onResignBlack={handleResignBlack}
-              onResign={handleResign}
-              onOfferDraw={handleOfferDraw}
+              onSave={handlePlayerNamesSave}
             />
-            <CapturedPieces captured={capturedPieces} />
-            <MoveHistory moves={moveHistory} game={game} />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
           </div>
         </div>
-      </main>
+      </div>
+      
+      <div className="p-4 md:p-8">
+
+        <main className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 items-start justify-items-center lg:justify-items-start">
+            <div className="flex justify-center">
+              <ChessBoard game={game} onMove={handleMove} playerRole={playerRole} />
+            </div>
+
+            <div className="w-full max-w-sm space-y-4">
+              {isMultiplayer && (
+                <div className="p-4 bg-card rounded-lg border">
+                  <p className="text-sm">
+                    <strong>Room:</strong> {roomId}
+                  </p>
+                  <p className="text-sm">
+                    <strong>Role:</strong> {playerRole === 'w' ? 'White' : playerRole === 'b' ? 'Black' : 'Spectator'}
+                  </p>
+                  <p className="text-sm">
+                    <strong>Status:</strong> {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button onClick={handleNewGame} className="flex-1">
+                  New Local Game
+                </Button>
+                <Button onClick={() => setShowMultiplayerDialog(true)} variant="secondary" className="flex-1">
+                  Multiplayer
+                </Button>
+              </div>
+              
+              <GameStatus
+                status={getGameStatus()}
+                turn={game.turn()}
+                isCheck={game.isCheck()}
+                isGameOver={game.isGameOver() || whiteTime === 0 || blackTime === 0 || gameResult !== ""}
+                onNewGame={handleNewGame}
+                onChess960={handleChess960}
+                whitePlayerName={whitePlayerName}
+                blackPlayerName={blackPlayerName}
+                whiteTime={whiteTime}
+                blackTime={blackTime}
+                onSetTime={() => setShowTimeControlDialog(true)}
+                showSetTime={movesPlayed < 2}
+                isMultiplayer={isMultiplayer}
+                playerRole={playerRole}
+                onResignWhite={handleResignWhite}
+                onResignBlack={handleResignBlack}
+                onResign={handleResign}
+                onOfferDraw={handleOfferDraw}
+              />
+              <CapturedPieces captured={capturedPieces} />
+              <MoveHistory moves={moveHistory} game={game} />
+            </div>
+          </div>
+        </main>
+      </div>
 
       <PromotionDialog
         open={showPromotionDialog}

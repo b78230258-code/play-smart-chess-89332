@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Chess, Square, PieceSymbol } from "chess.js";
 import { ChessBoard } from "@/components/ChessBoard";
+import { NavigationBar } from "@/components/NavigationBar";
 import { useMultiplayer } from "@/hooks/useMultiplayer";
 import { MultiplayerDialog } from "@/components/MultiplayerDialog";
 import { TimeControlDialog } from "@/components/TimeControlDialog";
@@ -11,13 +12,10 @@ import { PlayerSettings } from "@/components/PlayerSettings";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { GameEndOverlay } from "@/components/GameEndOverlay";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { chessSounds } from "@/utils/sounds";
 
 const Index = () => {
-  const { theme, setTheme } = useTheme();
   const [game, setGame] = useState(new Chess());
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -406,33 +404,16 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-[hsl(var(--menu-bar))] border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-          <div className="flex items-center justify-center gap-4">
-            <h1 className="text-3xl md:text-4xl font-bold text-[hsl(var(--menu-bar-foreground))]">
-              Chess
-            </h1>
-            <PlayerSettings
-              whitePlayerName={whitePlayerName}
-              blackPlayerName={blackPlayerName}
-              onSave={handlePlayerNamesSave}
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            >
-              {theme === "dark" ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <NavigationBar />
       
       <div className="p-4 md:p-8">
+        <div className="max-w-7xl mx-auto mb-6 flex items-center justify-center gap-4">
+          <PlayerSettings
+            whitePlayerName={whitePlayerName}
+            blackPlayerName={blackPlayerName}
+            onSave={handlePlayerNamesSave}
+          />
+        </div>
 
         <main className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 items-start justify-items-center lg:justify-items-start">

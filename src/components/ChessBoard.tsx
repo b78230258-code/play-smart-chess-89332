@@ -34,22 +34,25 @@ export const ChessBoard = ({ game, onMove, playerRole }: ChessBoardProps) => {
 
   const canInteract = !playerRole || playerRole === 'spectator' || game.turn() === playerRole;
 
-  // Find the checked king's position
-  const getCheckedKingSquare = (): Square | null => {
-    if (!game.isCheck()) return null;
-    const turn = game.turn();
-    for (let rankIdx = 0; rankIdx < 8; rankIdx++) {
-      for (let fileIdx = 0; fileIdx < 8; fileIdx++) {
-        const piece = board[rankIdx][fileIdx];
-        if (piece && piece.type === 'k' && piece.color === turn) {
-          return getSquareName(rankIdx, fileIdx);
+  // Find the checked king's position safely
+  const checkedKingSquare = (() => {
+    try {
+      if (!game.isCheck()) return null;
+      const turn = game.turn();
+      for (let rankIdx = 0; rankIdx < 8; rankIdx++) {
+        for (let fileIdx = 0; fileIdx < 8; fileIdx++) {
+          const piece = board[rankIdx][fileIdx];
+          if (piece && piece.type === 'k' && piece.color === turn) {
+            const square = `${files[fileIdx]}${ranks[rankIdx]}` as Square;
+            return square;
+          }
         }
       }
+    } catch (error) {
+      console.error("Error finding checked king:", error);
     }
     return null;
-  };
-
-  const checkedKingSquare = getCheckedKingSquare();
+  })();
 
   const handleSquareClick = useCallback(
     (square: Square) => {

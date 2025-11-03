@@ -264,66 +264,54 @@ const Index = () => {
 
   const handleChess960 = () => {
     // Generate a valid Chess960 back rank (white side)
-    const generateChess960BackRank = () => {
-      const board = Array(8).fill('');
-      const even = [0, 2, 4, 6];
-      const odd = [1, 3, 5, 7];
+    const pieces = ['B', 'B', 'Q', 'N', 'N', 'R', 'K', 'R'];
+    const backRank = Array(8).fill('');
+    const even = [0, 2, 4, 6];
+    const odd = [1, 3, 5, 7];
 
-      const pick = (arr: number[]) => arr.splice(Math.floor(Math.random() * arr.length), 1)[0];
+    const pickRandom = (arr: number[]) => arr.splice(Math.floor(Math.random() * arr.length), 1)[0];
 
-      // Bishops on opposite colors
-      const evenCopy = [...even];
-      const oddCopy = [...odd];
-      const b1 = pick(evenCopy);
-      const b2 = pick(oddCopy);
-      board[b1] = 'B';
-      board[b2] = 'B';
+    // Bishops on opposite colors
+    const evenCopy = [...even];
+    const oddCopy = [...odd];
+    const bishop1Pos = pickRandom(evenCopy);
+    const bishop2Pos = pickRandom(oddCopy);
+    backRank[bishop1Pos] = 'B';
+    backRank[bishop2Pos] = 'B';
 
-      // Remaining indices
-      const remaining = Array.from({ length: 8 }, (_, i) => i).filter((i) => ![b1, b2].includes(i));
+    // Remaining indices
+    const remaining = Array.from({ length: 8 }, (_, i) => i).filter((i) => ![bishop1Pos, bishop2Pos].includes(i));
 
-      // Queen
-      const qIndex = pick(remaining);
-      board[qIndex] = 'Q';
+    // Queen
+    const queenPos = pickRandom(remaining);
+    backRank[queenPos] = 'Q';
 
-      // Knights (2)
-      const n1 = pick(remaining);
-      const n2 = pick(remaining);
-      board[n1] = 'N';
-      board[n2] = 'N';
+    // Knights (2)
+    const knight1Pos = pickRandom(remaining);
+    const knight2Pos = pickRandom(remaining);
+    backRank[knight1Pos] = 'N';
+    backRank[knight2Pos] = 'N';
 
-      // Remaining 3 squares: place R K R with king between rooks
-      remaining.sort((a, b) => a - b);
-      board[remaining[0]] = 'R';
-      board[remaining[1]] = 'K';
-      board[remaining[2]] = 'R';
+    // Remaining 3 squares: place R K R with king between rooks
+    remaining.sort((a, b) => a - b);
+    backRank[remaining[0]] = 'R';
+    backRank[remaining[1]] = 'K';
+    backRank[remaining[2]] = 'R';
 
-      return { board: board.join(''), kingPos: remaining[1], rookPos: [remaining[0], remaining[2]] };
-    };
-
-    const white = generateChess960BackRank();
-    const whiteRank = white.board;
+    const whiteRank = backRank.join('');
     const blackRank = whiteRank.toLowerCase();
 
-    // Find king and rook positions for castling rights
-    // In Chess960, we use the file letters where rooks are placed
-    const files = 'abcdefgh';
-    const whiteKingFile = files[white.kingPos];
-    const whiteQueensideRookFile = files[white.rookPos[0]];
-    const whiteKingsideRookFile = files[white.rookPos[1]];
-    
-    // Standard castling notation: KQkq (kingside and queenside for both colors)
-    // For Chess960, we'll use KQ for white if king is between rooks
-    const castlingRights = 'KQkq';
-
-    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w ${castlingRights} - 0 1`;
+    // Chess960 FEN with castling rights
+    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w HAha - 0 1`;
 
     let newGame: Chess;
     try {
-      newGame = new Chess(fen);
-    } catch {
-      toast.error("Failed to set Chess960 position");
-      return;
+      // Create Chess960 game with proper castling support
+      newGame = new Chess(fen, { chess960: true } as any);
+    } catch (error) {
+      console.error("Chess960 setup error:", error);
+      toast.error("Failed to set Chess960 position. Using standard chess.");
+      newGame = new Chess();
     }
 
     const today = new Date();

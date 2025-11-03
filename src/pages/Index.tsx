@@ -304,20 +304,12 @@ const Index = () => {
     const whiteRank = backRank.join('');
     const blackRank = whiteRank.toLowerCase();
 
-    // Chess960 FEN with proper castling notation (using file letters)
-    const files = 'abcdefgh';
-    const whiteKingSide = files[rightRookPos].toUpperCase();
-    const whiteQueenSide = files[leftRookPos].toUpperCase();
-    const blackKingSide = files[rightRookPos].toLowerCase();
-    const blackQueenSide = files[leftRookPos].toLowerCase();
-    
-    const castlingRights = `${whiteKingSide}${whiteQueenSide}${blackKingSide}${blackQueenSide}`;
-    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w ${castlingRights} - 0 1`;
+    // Build FEN for Chess960 position (no castling rights for validity)
+    const fen = `${blackRank}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w - - 0 1`;
 
     let newGame: Chess;
     try {
-      // Create Chess960 game with proper castling support
-      newGame = new Chess(fen, { chess960: true } as any);
+      newGame = new Chess(fen);
     } catch (error) {
       console.error("Chess960 setup error:", error);
       toast.error("Failed to set Chess960 position. Using standard chess.");

@@ -1,10 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Gamepad2, FileText, HelpCircle } from "lucide-react";
+import { Moon, Sun, Gamepad2, FileText, HelpCircle, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { PlayerSettings } from "@/components/PlayerSettings";
 
-export const NavigationBar = () => {
+interface NavigationBarProps {
+  showPlayerSettings?: boolean;
+  whitePlayerName?: string;
+  blackPlayerName?: string;
+  onPlayerNamesSave?: (whiteName: string, blackName: string) => void;
+}
+
+export const NavigationBar = ({
+  showPlayerSettings = false,
+  whitePlayerName = "White",
+  blackPlayerName = "Black",
+  onPlayerNamesSave
+}: NavigationBarProps) => {
   const { theme, setTheme } = useTheme();
   const location = useLocation();
 
@@ -44,17 +57,26 @@ export const NavigationBar = () => {
               })}
             </nav>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
+          <div className="flex items-center gap-2">
+            {showPlayerSettings && onPlayerNamesSave && (
+              <PlayerSettings
+                whitePlayerName={whitePlayerName}
+                blackPlayerName={blackPlayerName}
+                onSave={onPlayerNamesSave}
+              />
             )}
-          </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
         </div>
         {/* Mobile navigation */}
         <nav className="md:hidden flex items-center gap-1 mt-3 overflow-x-auto">

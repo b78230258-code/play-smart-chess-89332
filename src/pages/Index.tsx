@@ -404,17 +404,14 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <NavigationBar />
+      <NavigationBar 
+        showPlayerSettings={true}
+        whitePlayerName={whitePlayerName}
+        blackPlayerName={blackPlayerName}
+        onPlayerNamesSave={handlePlayerNamesSave}
+      />
       
       <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto mb-6 flex items-center justify-center gap-4">
-          <PlayerSettings
-            whitePlayerName={whitePlayerName}
-            blackPlayerName={blackPlayerName}
-            onSave={handlePlayerNamesSave}
-          />
-        </div>
-
         <main className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 items-start justify-items-center lg:justify-items-start">
             <div className="flex justify-center">

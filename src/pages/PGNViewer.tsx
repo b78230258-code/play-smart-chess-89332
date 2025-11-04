@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Chess } from "chess.js";
 import { NavigationBar } from "@/components/NavigationBar";
 import { ChessBoard } from "@/components/ChessBoard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, SkipBack, ChevronLeft, ChevronRight, SkipForward } from "lucide-react";
+import { Upload, SkipBack, ChevronLeft, ChevronRight, SkipForward, FileUp } from "lucide-react";
 import { toast } from "sonner";
+import { chessSounds } from "@/utils/sounds";
 
 const PGNViewer = () => {
   const [pgnText, setPgnText] = useState("");
   const [game, setGame] = useState(new Chess());
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLoadPGN = () => {
     try {
@@ -67,6 +69,65 @@ const PGNViewer = () => {
     setCurrentMoveIndex(moveHistory.length - 1);
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setPgnText(content);
+      try {
+        const newGame = new Chess();
+        newGame.loadPgn(content);
+        const moves = newGame.history();
+        
+        const displayGame = new Chess();
+        setGame(displayGame);
+        setMoveHistory(moves);
+        setCurrentMoveIndex(-1);
+        toast.success("PGN file loaded successfully!");
+      } catch (error) {
+        toast.error("Invalid PGN file format");
+        console.error(error);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (moveHistory.length === 0) return;
+      
+      switch (e.key) {
+        case "ArrowLeft":
+          e.preventDefault();
+          goToPrevious();
+          chessSounds.playMove();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          goToNext();
+          chessSounds.playMove();
+          break;
+        case "Home":
+          e.preventDefault();
+          goToStart();
+          chessSounds.playMove();
+          break;
+        case "End":
+          e.preventDefault();
+          goToEnd();
+          chessSounds.playMove();
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentMoveIndex, moveHistory]);
+
   return (
     <div className="min-h-screen bg-background">
       <NavigationBar />
@@ -93,10 +154,27 @@ const PGNViewer = () => {
                     onChange={(e) => setPgnText(e.target.value)}
                     className="min-h-[200px] font-mono text-sm"
                   />
-                  <Button onClick={handleLoadPGN} className="w-full">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Load PGN
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={handleLoadPGN} className="flex-1">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Load PGN
+                    </Button>
+                    <Button 
+                      onClick={() => fileInputRef.current?.click()} 
+                      variant="secondary"
+                      className="flex-1"
+                    >
+                      <FileUp className="h-4 w-4 mr-2" />
+                      Upload File
+                    </Button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pgn,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
 
                   {moveHistory.length > 0 && (
                     <div className="space-y-4">
